@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  NOTE
+  TASK
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  name         String
+  role         Role     @default(EMPLOYEE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customers      Customer[]
+  leads          Lead[]
+  assignedLeads  Lead[]     @relation("AssignedLeads")
+  activities     Activity[]
+
+  @@index([email])
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  company   String?
+  address   String?
+  notes     String?
+  status    String   @default("Active")
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads      Lead[]
+  activities Activity[]
+
+  @@index([userId])
+  @@index([email])
+}
+
+model Lead {
+  id                Int        @id @default(autoincrement())
+  title             String
+  value             Float?
+  status            LeadStatus @default(NEW)
+  source            String?
+  notes             String?
+  customerId        Int
+  userId            Int
+  assignedToId      Int?
+  expectedCloseDate DateTime?
+  closedAt          DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedTo User?      @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
+  activities Activity[]
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model Activity {
+  id         Int          @id @default(autoincrement())
+  type       ActivityType
+  subject    String
+  notes      String?
+  customerId Int
+  leadId     Int?
+  userId     Int
+  dueAt      DateTime?
+  completedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([leadId])
+}
